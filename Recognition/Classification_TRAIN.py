@@ -25,9 +25,7 @@ for i in [path + "/" + list(next(os.walk(path))[1])[i] for i in range(len(list(n
         for k in j[2]:
             data = pd.read_csv(i + "/" + k)
             __x = []
-            for h, r, p in zip(
-                stats.zscore(data.heading.tolist()), stats.zscore(data.roll.tolist()), stats.zscore(data.pitch.tolist())
-            ):
+            for h, r, p in zip(data.heading.tolist(), data.roll.tolist(), data.pitch.tolist()):
                 __x.append([h, r, p])
             # y.append()
             x.append(__x)
@@ -53,9 +51,7 @@ if __name__ == "__main__":
 
     data = pd.read_csv("/home/lethargic/Documents/PicoMPU9250/predict_test/test.csv")
     testx = []
-    for h, r, p in zip(
-        stats.zscore(data.heading.tolist()), stats.zscore(data.roll.tolist()), stats.zscore(data.pitch.tolist())
-    ):
+    for h, r, p in zip(data.heading.tolist(), data.roll.tolist(), data.pitch.tolist()):
         testx.append([h, r, p])
 
     time_series_testx = utils.to_time_series(testx)

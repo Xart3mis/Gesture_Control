@@ -37,6 +37,6 @@ if __name__ == "__main__":
                 if len(gesture.shape) == 3:
                     if gesture.shape[2] == 3:
                         print("Recognizing gesture...")
-                        print(labels[clf.predict(gesture)[0]])
+                        print(labels[clf.predict(utils.to_time_series(gesture))[0]])
 
             simu.gesture.clear()
