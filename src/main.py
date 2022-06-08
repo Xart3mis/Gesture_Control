@@ -71,14 +71,11 @@ class Motion:
     def __init__(self, imu_: IMU) -> None:
         self.imu: IMU = imu_
         self.samples: list = []
-        self.prev_3: list = [False] * 3
 
     def update(self) -> None:
-        curr = [imu.fuse.heading, imu.fuse.roll, imu.fuse.pitch]
-        self.prev_3.append(curr[-1])
-
-        if len(self.prev_3) > 3:
-            self.prev_3.pop(0)
+        ax, ay, az = self.imu.imu.accel.xyz
+        mx, my, mz = self.imu.imu.mag.xyz
+        curr = [self.imu.fuse.heading, self.imu.fuse.roll, self.imu.fuse.pitch, ax, ay, az, mx, my, mz]
 
         if self.imu.inmotion and self.imu.motion_count > 10:
             self.imu.update()
@@ -88,7 +85,7 @@ class Motion:
 
 
 if __name__ == "__main__":
-    imu = IMU(motion_threshold=0.91)
+    imu = IMU(motion_threshold=1)
     motion = Motion(imu)
 
     count = 0
