@@ -37,7 +37,7 @@ for i in [path + "/" + list(next(os.walk(path))[1])[i] for i in range(len(list(n
                 data.my.tolist(),
                 data.mz.tolist(),
             ):
-                __x.append([h, r, p, ax, ay, az, mx, my, mz])
+                __x.append([h, r, p, ax * 100, ay * 100, az * 100, mx * 100, my * 100, mz * 100])
             # y.append()
             x.append(__x)
             for l in labels.items():
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         data.my.tolist(),
         data.mz.tolist(),
     ):
-        testx.append([h, r, p, ax, ay, az, mx, my, mz])
+        testx.append([h, r, p, ax * 100, ay * 100, az * 100, mx * 100, my * 100, mz * 100])
 
     time_series_testx = utils.to_time_series([testx])
     print(labels[clf.predict(time_series_testx)[0]])

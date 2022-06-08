@@ -1,9 +1,7 @@
-import time
-import json
 import serial
 import pickle
 import numpy as np
-from rdp import rdp
+from time import sleep
 from tslearn import utils
 
 print("Loading Model and Labels")
@@ -15,12 +13,15 @@ clf = pickle_f[0]
 
 class SerialIMU:
     def __init__(self, port: str, baud_rate: int) -> None:
-        self.pyb = serial.Serial(port, baud_rate)
+        self.pyb = serial.Serial(port, baud_rate, timeout=1)
         self.gesture = []
 
     def update(self) -> None:
         while self.pyb.in_waiting > 8:
             line = self.pyb.readline().decode("utf-8").strip()
+            if "Traceback" in line:
+                print("something went wrong on the serial device.")
+                return
             print("reading gesture... ", end="      \r")
             # print(line)
             line_arr = line.split(",")
@@ -29,15 +30,15 @@ class SerialIMU:
                     float(line_arr[0]),
                     float(line_arr[1]),
                     float(line_arr[2]),
-                    float(line_arr[3]),
-                    float(line_arr[4]),
-                    float(line_arr[5]),
-                    float(line_arr[6]),
-                    float(line_arr[7]),
-                    float(line_arr[8]),
+                    float(line_arr[3]) * 100,
+                    float(line_arr[4]) * 100,
+                    float(line_arr[5]) * 100,
+                    float(line_arr[6]) * 100,
+                    float(line_arr[7]) * 100,
+                    float(line_arr[8]) * 100,
                 ]
             )
-            time.sleep(0.05)
+            sleep(0.06)
 
 
 if __name__ == "__main__":
@@ -52,6 +53,6 @@ if __name__ == "__main__":
                 if len(gesture.shape) == 3:
                     if gesture.shape[2] == 9:
                         print("Recognizing gesture...")
-                        print(labels[clf.predict(utils.to_time_series(rdp(gesture, epsilon=0.4)))[0]])
+                        print(labels[clf.predict(utils.to_time_series(gesture))[0]])
 
         simu.gesture.clear()

@@ -82,6 +82,7 @@ class Motion:
             self.samples = curr
         else:
             self.samples = []
+            del curr, ax, ay, az, mx, my, mz
 
 
 if __name__ == "__main__":
