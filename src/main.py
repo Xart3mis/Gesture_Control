@@ -86,14 +86,14 @@ class Motion:
 
 
 if __name__ == "__main__":
-    imu = IMU(motion_threshold=1)
+    imu = IMU(motion_threshold=1.2)
     motion = Motion(imu)
 
     count = 0
     while True:
         motion.update()
         count += 1
-        if len(motion.samples) > 1:
+        if len(motion.samples) >= 1:
             for i, v in enumerate(motion.samples):
                 print(str(v) + ("," if i < len(motion.samples) - 1 else ""), end="")
             print("," + str(count))
