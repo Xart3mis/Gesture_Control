@@ -5,13 +5,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.interpolate as interp
-from pyts.classification import BOSSVS
 from pyts.preprocessing import MinMaxScaler
+from pyts.classification import BOSSVS
+from pyts.transformation import ROCKET
 from pyts.multivariate.image import JointRecurrencePlot
 from pyts.multivariate.classification import MultivariateClassifier
 from pyts.multivariate.transformation import MultivariateTransformer
 
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+plt.gca().spines["top"].set_visible(False)
+plt.gca().spines["right"].set_visible(False)
+plt.style.use("dark_background")
 
 path = "/home/lethargic/Documents/PicoMPU9250/data"
 
@@ -59,9 +63,6 @@ for i in [path + "/" + list(next(os.walk(path))[1])[i] for i in range(len(list(n
                     y.append(l[0])
 
 clf = MultivariateClassifier(BOSSVS())
-
-Tnew = np.arange(0, len(max(x, key=lambda s: len(s[0]))[0]))
-
 
 for i, v in enumerate(x):
     for i1, v1 in enumerate(v):
@@ -117,22 +118,25 @@ if __name__ == "__main__":
 
     print(clf.score(x, y))
     test_x = get_testx()
-    print(test_x.shape)
 
     print(labels[clf.predict(test_x)[0]])
-    pickle.dump([Tnew, labels, clf], open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "wb"))
+    pickle.dump([labels, clf], open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "wb"))
 
     # Recurrence plot transformation
     jrp = JointRecurrencePlot(threshold="point", percentage=50)
     X_jrp = jrp.fit_transform(x)
 
     ax1.imshow(X_jrp[0], cmap="binary", origin="lower")
-    plt.tight_layout()
+
+    name = "Accent"
+    ax2.set_prop_cycle(color=plt.cm.get_cmap(name).colors)
+    ax3.set_prop_cycle(color=plt.cm.get_cmap(name).colors)
 
     for i in x[0]:
-        ax2.plot(i)
+        ax2.plot(i, alpha=0.7)
 
-    for i in x[-1]:
-        ax3.plot(i)
+    for i, v in enumerate(x[-1]):
+        ax3.plot(v, alpha=0.7)
 
+    plt.tight_layout()
     plt.show()
