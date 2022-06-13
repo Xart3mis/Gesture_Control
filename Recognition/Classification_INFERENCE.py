@@ -9,9 +9,8 @@ from pyts.multivariate.transformation import MultivariateTransformer
 print("Loading Model and Labels")
 pickle_f = pickle.load(open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "rb"))
 
-labels = pickle_f[1]
-Tnew = pickle_f[0]
-clf = pickle_f[2]
+labels = pickle_f[0]
+clf = pickle_f[1]
 
 MIN_GESTURE_LEN = 10
 
