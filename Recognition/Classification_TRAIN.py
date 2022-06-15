@@ -5,10 +5,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.interpolate as interp
-from pyts.preprocessing import MinMaxScaler
+from pyts.classification import TSBF
 from pyts.classification import BOSSVS
-from pyts.transformation import ROCKET
-from pyts.multivariate.image import JointRecurrencePlot
+from pyts.classification import SAXVSM
+from pyts.preprocessing import MinMaxScaler
+from pyts.classification import TimeSeriesForest
+from pyts.classification import LearningShapelets
 from pyts.multivariate.classification import MultivariateClassifier
 from pyts.multivariate.transformation import MultivariateTransformer
 
@@ -62,7 +64,7 @@ for i in [path + "/" + list(next(os.walk(path))[1])[i] for i in range(len(list(n
                 if l[1] in k:
                     y.append(l[0])
 
-clf = MultivariateClassifier(BOSSVS())
+# clf = MultivariateClassifier(BOSSVS())
 
 for i, v in enumerate(x):
     for i1, v1 in enumerate(v):
@@ -112,31 +114,46 @@ def get_testx():
 
 
 if __name__ == "__main__":
-    print("Training Model...")
-    clf.fit(x, y)
-    print("Done Training.")
+    # print("Training Model...")
+    # clf.fit(x, y)
+    # print("Done Training.")
 
-    print(clf.score(x, y))
+    # print(clf.score(x, y))
     test_x = get_testx()
 
-    print(labels[clf.predict(test_x)[0]])
-    pickle.dump([labels, clf], open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "wb"))
-
-    # Recurrence plot transformation
-    jrp = JointRecurrencePlot(threshold="point", percentage=50)
-    X_jrp = jrp.fit_transform(x)
-
-    ax1.imshow(X_jrp[0], cmap="binary", origin="lower")
+    # print(labels[clf.predict(test_x)[0]])
 
     name = "Accent"
     ax2.set_prop_cycle(color=plt.cm.get_cmap(name).colors)
     ax3.set_prop_cycle(color=plt.cm.get_cmap(name).colors)
 
+    models = [
+        MultivariateClassifier(TimeSeriesForest()),
+        MultivariateClassifier(BOSSVS()),
+        MultivariateClassifier(SAXVSM()),
+        MultivariateClassifier(TSBF()),
+    ]
+
+    print("Training Classifier Stack")
+    preds = []
+    for m in models:
+        m.fit(x, y)
+        preds.append(m.predict(test_x)[0])
+    print("Done")
+
+    print(labels[max(set(preds), key = preds.count)])
+
+    for i in x[9]:
+        ax1.plot(i, alpha=0.7)
+
     for i in x[0]:
         ax2.plot(i, alpha=0.7)
 
-    for i, v in enumerate(x[-1]):
-        ax3.plot(v, alpha=0.7)
+    for i in x[-1]:
+        ax3.plot(i, alpha=0.7)
 
+
+    pickle.dump([labels, models], open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "wb"))
+    
     plt.tight_layout()
     plt.show()

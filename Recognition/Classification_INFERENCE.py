@@ -10,7 +10,7 @@ print("Loading Model and Labels")
 pickle_f = pickle.load(open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "rb"))
 
 labels = pickle_f[0]
-clf = pickle_f[1]
+models = pickle_f[1]
 
 MIN_GESTURE_LEN = 10
 
@@ -37,6 +37,7 @@ class SerialIMU:
                 mx.append(float(line_arr[6]))
                 my.append(float(line_arr[7]))
                 mz.append(float(line_arr[8]))
+
                 sleep(0.08)
 
             except ValueError as e:
@@ -72,7 +73,11 @@ if __name__ == "__main__":
             if gesture.shape[2] >= MIN_GESTURE_LEN:
                 print("Recognizing Gesture...")
                 simu.preprocess()
-                print(labels[clf.predict(np.asarray(simu.gesture))[0]])
+                preds = []
+                for m in models:
+                    preds.append(m.predict(np.asarray(simu.gesture))[0])
+                
+                print(labels[max(set(preds), key = preds.count)])
                 sleep(1.5)
                 print("Waiting for gesture...")
             else:
