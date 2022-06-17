@@ -1,25 +1,26 @@
 import os
-import json
 import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.interpolate as interp
-from pyts.classification import TSBF
-from pyts.classification import BOSSVS
-from pyts.classification import SAXVSM
 from pyts.preprocessing import MinMaxScaler
-from pyts.classification import TimeSeriesForest
-from pyts.classification import LearningShapelets
-from pyts.multivariate.classification import MultivariateClassifier
 from pyts.multivariate.transformation import MultivariateTransformer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
 
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-plt.gca().spines["top"].set_visible(False)
-plt.gca().spines["right"].set_visible(False)
-plt.style.use("dark_background")
+from sktime.classification.shapelet_based import ShapeletTransformClassifier
+from sktime.classification.interval_based import TimeSeriesForestClassifier
+from sktime.classification.dictionary_based import ContractableBOSS
+from sktime.transformations.panel.compose import ColumnConcatenator
+from sktime.classification.compose import ColumnEnsembleClassifier
+from sktime.classification.dictionary_based import WEASEL
+from sktime.classification.kernel_based import Arsenal
+# plt.gca().spines["top"].set_visible(False)
+# plt.gca().spines["right"].set_visible(False)
 
-path = "/home/lethargic/Documents/PicoMPU9250/data"
+
+path = "/home/xart3misx/Documents/Gesture_Control/data"
 
 dirs = []
 
@@ -32,11 +33,24 @@ for i, v in enumerate(list(next(os.walk(path))[1])):
     labels[i] = v
 
 
-for i in [path + "/" + list(next(os.walk(path))[1])[i] for i in range(len(list(next(os.walk(path))[1])))]:
+for i in [
+    path + "/" + list(next(os.walk(path))[1])[i]
+    for i in range(len(list(next(os.walk(path))[1])))
+]:
     for j in os.walk(i):
         for k in j[2]:
             data = pd.read_csv(i + "/" + k)
-            _h, _r, _p, _ax, _ay, _az, _mx, _my, _mz = [], [], [], [], [], [], [], [], []
+            _h, _r, _p, _ax, _ay, _az, _mx, _my, _mz = (
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             for h, r, p, ax, ay, az, mx, my, mz in zip(
                 data.heading.tolist(),
                 data.roll.tolist(),
@@ -66,94 +80,105 @@ for i in [path + "/" + list(next(os.walk(path))[1])[i] for i in range(len(list(n
 
 # clf = MultivariateClassifier(BOSSVS())
 
+
 for i, v in enumerate(x):
     for i1, v1 in enumerate(v):
-        x[i][i1] = interp.interp1d(np.linspace(0, 99, num=len(v1)), v1, kind="cubic")(np.linspace(0, 99))
+        x[i][i1] = interp.interp1d(np.linspace(0, 99, num=len(v1)), v1, kind="cubic")(
+            np.linspace(0, 99)
+        )
+
+
+def smooth(scalars, weight=0.75):  # Weight between 0 and 1
+    return [
+        scalars[i] * weight + (1 - weight) * scalars[i + 1]
+        for i in range(len(scalars))
+        if i < len(scalars) - 1
+    ]
 
 
 x = np.asarray(x)
-x = MultivariateTransformer(MinMaxScaler(sample_range=(-1, 1)), flatten=False).fit_transform(x)
+x = MultivariateTransformer(
+    MinMaxScaler(sample_range=(-1, 1)), flatten=False
+).fit_transform(x)
 
+x_concat = []
+for i in x:
+    x_concat.append(
+        [
+            smooth(np.concatenate((i[0], i[1], i[2]), axis=None)),
+            smooth(np.concatenate((i[3], i[4], i[5]), axis=None)),
+            smooth(np.concatenate((i[6], i[7], i[8]), axis=None)),
+        ]
+    )
 
-def get_testx():
-    data = pd.read_csv("/home/lethargic/Documents/PicoMPU9250/predict_test/test.csv")
-    test_x = []
-    _h, _r, _p, _ax, _ay, _az, _mx, _my, _mz = [], [], [], [], [], [], [], [], []
+x = np.array(x_concat)
+y = np.array(y)
 
-    for h, r, p, ax, ay, az, mx, my, mz in zip(
-        data.heading.tolist(),
-        data.roll.tolist(),
-        data.pitch.tolist(),
-        data.ax.tolist(),
-        data.ay.tolist(),
-        data.az.tolist(),
-        data.mx.tolist(),
-        data.my.tolist(),
-        data.mz.tolist(),
-    ):
-        _h.append(h)
-        _r.append(r)
-        _p.append(p)
-        _ax.append(ax)
-        _ay.append(ay)
-        _az.append(az)
-        _mx.append(mx)
-        _my.append(my)
-        _mz.append(mz)
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.15)
 
-    test_x.append([_h, _r, _p, _ax, _ay, _az, _mx, _my, _mz])
+def fit_models(_x, _y):
+    estimators = [
+    (
+        "TSFC",
+        TimeSeriesForestClassifier(n_estimators=1000, n_jobs=-1, random_state=0),
+        0,
+    ),
+    ("WEASEL", WEASEL(random_state=0), 0),
+    ("cBOSS", ContractableBOSS(random_state=0), 0),
+    ("ShapeletTransform", ShapeletTransformClassifier(), 0),
+    ("Arsenal", Arsenal(), 0)
+]
 
-    for i, v in enumerate(test_x):
-        for i1, v1 in enumerate(v):
-            test_x[i][i1] = interp.interp1d(np.linspace(0, 99, num=len(v1)), v1, kind="cubic")(np.linspace(0, 99))
-
-    test_x = np.asarray(test_x)
-    test_x = MultivariateTransformer(MinMaxScaler(sample_range=(-1, 1)), flatten=False).fit_transform(test_x)
-
-    return test_x
-
-
-if __name__ == "__main__":
-    # print("Training Model...")
-    # clf.fit(x, y)
-    # print("Done Training.")
-
-    # print(clf.score(x, y))
-    test_x = get_testx()
-
-    # print(labels[clf.predict(test_x)[0]])
-
-    name = "Accent"
-    ax2.set_prop_cycle(color=plt.cm.get_cmap(name).colors)
-    ax3.set_prop_cycle(color=plt.cm.get_cmap(name).colors)
-
-    models = [
-        MultivariateClassifier(TimeSeriesForest()),
-        MultivariateClassifier(BOSSVS()),
-        MultivariateClassifier(SAXVSM()),
-        MultivariateClassifier(TSBF()),
+    steps = [
+        ("concatenate", ColumnConcatenator()),
+        ("classify", ColumnEnsembleClassifier(estimators=estimators)),
     ]
 
-    print("Training Classifier Stack")
-    preds = []
-    for m in models:
-        m.fit(x, y)
-        preds.append(m.predict(test_x)[0])
-    print("Done")
+    print("Fitting Classifier Stack.")
+    print(
+        "Classifiers:",
+        "".join(
+            [
+                (v[0] + ", ") if i < len(estimators) - 1 else (v[0])
+                for i, v in enumerate(estimators)
+            ]
+        ),
+    )
+    clf = Pipeline(steps)
+    clf.fit(_x, _y)
+    print("Done.")
 
-    print(labels[max(set(preds), key = preds.count)])
+    pickle.dump(
+        [labels, clf],
+        open(
+            "/home/xart3misx/Documents/Gesture_Control/Models/Classsifier.pickle", "wb"
+        ),
+    )
 
-    for i in x[9]:
-        ax1.plot(i, alpha=0.7)
-
-    for i in x[0]:
-        ax2.plot(i, alpha=0.7)
-
-    for i in x[-1]:
-        ax3.plot(i, alpha=0.7)
+    return clf
 
 
-    pickle.dump([labels, models], open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "wb"))
-    
-    plt.tight_layout()
+def plot_and_show():
+    idx = 0
+
+    fig = plt.figure()
+    gs = fig.add_gridspec(3, 3, hspace=0, wspace=0)
+    axs = gs.subplots(sharex="col", sharey="row")
+    axs[0, 0].plot(x_concat[idx][0])
+    axs[0, 1].plot(x_concat[idx][1])
+    axs[0, 2].plot(x_concat[idx][2])
+    axs[1, 0].plot(x_concat[idx + 1][0])
+    axs[1, 1].plot(x_concat[idx + 1][1])
+    axs[1, 2].plot(x_concat[idx + 1][2])
+    axs[2, 0].plot(x_concat[idx + 2][0])
+    axs[2, 1].plot(x_concat[idx + 2][1])
+    axs[2, 2].plot(x_concat[idx + 2][2])
+    for ax in axs.flat:
+        ax.label_outer()
+
+
     plt.show()
+
+if __name__ == "__main__":
+    clf = fit_models(x, y)
+    # print(clf.score(X_test, y_test))
