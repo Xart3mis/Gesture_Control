@@ -7,10 +7,12 @@ from pyts.preprocessing import MinMaxScaler
 from pyts.multivariate.transformation import MultivariateTransformer
 
 print("Loading Model and Labels")
-pickle_f = pickle.load(open("/home/lethargic/Documents/PicoMPU9250/Models/Classsifier.pickle", "rb"))
+pickle_f = pickle.load(
+    open("/home/xart3misx/Documents/Gesture_Control/Models/Classsifier.pickle", "rb")
+)
 
 labels = pickle_f[0]
-models = pickle_f[1]
+clf = pickle_f[1]
 
 MIN_GESTURE_LEN = 10
 
@@ -49,13 +51,34 @@ class SerialIMU:
         if len(h) > 0:
             self.gesture.append([h, p, r, ax, ay, az, mx, my, mz])
 
+    def __smooth__(self, scalars, weight=0.75) -> list:
+        return [
+            scalars[i] * weight + (1 - weight) * scalars[i + 1]
+            for i in range(len(scalars))
+            if i < len(scalars) - 1
+        ]
+
     def preprocess(self) -> None:
         for i, v in enumerate(self.gesture):
             for i1, v1 in enumerate(v):
-                self.gesture[i][i1] = interp1d(np.linspace(0, 99, num=len(v1)), v1, kind="cubic")(np.linspace(0, 99))
-        self.gesture = MultivariateTransformer(MinMaxScaler(sample_range=(-1, 1)), flatten=False).fit_transform(
-            self.gesture
-        )
+                self.gesture[i][i1] = interp1d(
+                    np.linspace(0, 99, num=len(v1)), v1, kind="cubic")(np.linspace(0, 99))
+
+        self.gesture = MultivariateTransformer(
+            MinMaxScaler(sample_range=(-1, 1)), flatten=False
+        ).fit_transform(self.gesture)
+
+        x_concat = []
+        for i in self.gesture:
+            x_concat.append(
+                [
+                    self.__smooth__(np.concatenate((i[0], i[1], i[2]), axis=None)),
+                    self.__smooth__(np.concatenate((i[3], i[4], i[5]), axis=None)),
+                    self.__smooth__(np.concatenate((i[6], i[7], i[8]), axis=None)),
+                ]
+            )
+
+        self.gesture = x_concat
 
 
 if __name__ == "__main__":
@@ -69,15 +92,11 @@ if __name__ == "__main__":
 
         if len(simu.gesture) > 0:
             gesture = np.asarray(simu.gesture)
-
             if gesture.shape[2] >= MIN_GESTURE_LEN:
                 print("Recognizing Gesture...")
                 simu.preprocess()
-                preds = []
-                for m in models:
-                    preds.append(m.predict(np.asarray(simu.gesture))[0])
-                
-                print(labels[max(set(preds), key = preds.count)])
+                print(labels[clf.predict(np.array(simu.gesture))[0]])
+
                 sleep(1.5)
                 print("Waiting for gesture...")
             else:
